@@ -5,20 +5,19 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract Escrow is ReentrancyGuard {
     enum Status {
-        NONE,
-        ACCEPTED,
+        REVIEW_PENDING,
         REJECTED,
-        PENDING,
-        DELIVERED,
-        COMPLETED,
+        ACCEPTED,
+        TRADING,
         DISPUTED,
-        REFUNDED
+        REFUNDED,
+        DELIVERED,
+        COMPLETED
     }
 
     enum ProductAvailable {
-        UNDER_REVIEW,
-        YES,
-        NO
+        NO,
+        YES
     }
 
     address public escrowAcc;
@@ -56,17 +55,25 @@ contract Escrow is ReentrancyGuard {
         escrowAvailBal = 0;
     }
 
-    event ProposeToListProductSuccessful(
+    // event
+    event ProductProposedForListing(
         uint256 _productId,
         address indexed _executor,
-        string _availability
+        Status status
     );
-    event acceptProposedProductSuccessful(
+    event proposedProductAccepted(
         uint256 _productId,
+        Status status,
         string _availability
     );
-    event rejectProductSuccessful(uint256 _productId, string _availability);
 
+    event proposedProductRejected(
+        uint256 _productId,
+        Status status,
+        string _availability
+    );
+
+    // Propose to list a product
     function ProposeToListProduct(
         string calldata _description
     ) external payable returns (bool) {
@@ -83,16 +90,17 @@ contract Escrow is ReentrancyGuard {
         product.price = msg.value;
         product.createdAt = block.timestamp;
         product.owner = msg.sender;
+        product.status = Status.REVIEW_PENDING;
 
         // Assigning to owner and stating availability
         productsOf[msg.sender].push(product);
         ownerOf[productId] = msg.sender;
-        isProductAvailable[productId] = ProductAvailable.UNDER_REVIEW;
+        isProductAvailable[productId] = ProductAvailable.NO;
 
-        emit ProposeToListProductSuccessful(
+        emit ProductProposedForListing(
             productId,
             msg.sender,
-            "UNDER REVIEW"
+            Status.REVIEW_PENDING
         );
 
         return true;
@@ -109,15 +117,14 @@ contract Escrow is ReentrancyGuard {
         );
 
         require(
-            products[_productId].status != Status.ACCEPTED &&
-                products[_productId].status != Status.REJECTED,
-            "Product already processed"
+            products[_productId].status == Status.REVIEW_PENDING,
+            "This project is not under review"
         );
 
-        // Ensure the product is not already accepted
         require(
-            isProductAvailable[_productId] != ProductAvailable.YES,
-            "Product is already accepted"
+            products[_productId].status != Status.ACCEPTED &&
+                products[_productId].status != Status.REJECTED,
+            "Product already reviewed"
         );
 
         products[_productId].status = Status.ACCEPTED;
@@ -126,7 +133,7 @@ contract Escrow is ReentrancyGuard {
 
         totalAcceptedProduct++;
 
-        emit acceptProposedProductSuccessful(_productId, " YES: ACCEPTED");
+        emit proposedProductAccepted(_productId, Status.ACCEPTED, " YES");
 
         return true;
     }
@@ -141,17 +148,16 @@ contract Escrow is ReentrancyGuard {
             "Product does not exist"
         );
 
-        // Ensure the product has not been accepted or rejected already
         require(
-            products[_productId].status != Status.ACCEPTED &&
-                products[_productId].status != Status.REJECTED,
-            "Product already processed"
+            products[_productId].status == Status.REVIEW_PENDING,
+            "This project is not under review"
         );
 
-        // Ensure the product is not already rejected
+        // Ensure the product has not been rejected or accepted already
         require(
-            isProductAvailable[_productId] != ProductAvailable.NO,
-            "Product already rejected"
+            products[_productId].status != Status.REJECTED &&
+                products[_productId].status != Status.ACCEPTED,
+            "Product already reviewed"
         );
 
         products[_productId].status = Status.REJECTED;
@@ -160,8 +166,16 @@ contract Escrow is ReentrancyGuard {
 
         totalRejectedProduct++;
 
-        emit rejectProductSuccessful(_productId, "NO: REJECTED");
+        emit proposedProductRejected(_productId, Status.REJECTED, "NO");
 
         return true;
+    }
+
+    function getAllProducts() public view returns (Products[] memory props) {
+        props = new Products[](totalProductsUploaded);
+
+        for (uint256 i = 0; i < totalProductsUploaded; i++) {
+            props[i] = products[i];
+        }
     }
 }
