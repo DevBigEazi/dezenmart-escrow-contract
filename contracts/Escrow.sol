@@ -66,12 +66,12 @@ contract Escrow is ReentrancyGuard {
     event proposedProductRejected(uint256 _productId, Status status, string _availability);
 
     // Propose to list a product
-    function ProposeToListProduct(
+    function ProposeToListProduct(  uint256 _price,
         string calldata _description
-    ) external payable returns (bool) {
+    ) external returns (bool) {
         require(msg.sender != address(0), "Address zero not allowed");
         require(bytes(_description).length > 0, "Description cannot be empty");
-        require(msg.value > 0 ether, "Product price cannot be zero ethers");
+        require(_price > 0 , "Product price cannot be zero ethers");
 
         // listing the product
         uint256 productId = totalProductsUploaded++;
@@ -79,7 +79,7 @@ contract Escrow is ReentrancyGuard {
         Products storage product = products[productId];
         product.productId = productId;
         product.description = _description;
-        product.price = msg.value;
+        product.price = _price; 
         product.createdAt = block.timestamp;
         product.owner = msg.sender;
         product.status = Status.REVIEW_PENDING;
@@ -171,7 +171,7 @@ contract Escrow is ReentrancyGuard {
         return products[_productId];
     }
 
-    function getMyProducts() public view returns (Products[] memory) {
+    function myProducts() public view returns (Products[] memory) {
         return productsOf[msg.sender];
     }
 }
