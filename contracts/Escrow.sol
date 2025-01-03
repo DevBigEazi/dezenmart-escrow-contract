@@ -61,17 +61,9 @@ contract Escrow is ReentrancyGuard {
         address indexed _executor,
         Status status
     );
-    event proposedProductAccepted(
-        uint256 _productId,
-        Status status,
-        string _availability
-    );
+    event proposedProductAccepted(uint256 _productId, Status status, string _availability);
 
-    event proposedProductRejected(
-        uint256 _productId,
-        Status status,
-        string _availability
-    );
+    event proposedProductRejected(uint256 _productId, Status status, string _availability);
 
     // Propose to list a product
     function ProposeToListProduct(
@@ -97,11 +89,7 @@ contract Escrow is ReentrancyGuard {
         ownerOf[productId] = msg.sender;
         isProductAvailable[productId] = ProductAvailable.NO;
 
-        emit ProductProposedForListing(
-            productId,
-            msg.sender,
-            Status.REVIEW_PENDING
-        );
+        emit ProductProposedForListing(productId, msg.sender, Status.REVIEW_PENDING);
 
         return true;
     }
@@ -177,5 +165,13 @@ contract Escrow is ReentrancyGuard {
         for (uint256 i = 0; i < totalProductsUploaded; i++) {
             props[i] = products[i];
         }
+    }
+
+    function getProduct(uint256 _productId) public view returns (Products memory )  {
+        return products[_productId];
+    }
+
+    function getMyProducts() public view returns (Products[] memory) {
+        return productsOf[msg.sender];
     }
 }
